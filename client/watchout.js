@@ -3,7 +3,7 @@
 var Board = function () {
     this.x = 700;
     this.y = 700;
-    this.numEnemies = 30;
+    this.numEnemies = 300;
     this.padding = 20;
     this.currentScore = 0;
     this.maxScore = 0;
@@ -46,7 +46,6 @@ var gameBoard = d3.select('body')
                     .attr('class', 'gameBoard')
                     .attr('border', 1)
                     .style('stroke-width', 5)
-                    .style('stroke', 'red')
                     .style('display', 'block')
                     .style('margin', 'auto');
 
@@ -66,13 +65,20 @@ var eCircles = gameBoard.selectAll('circle')
                     .data(allEnemies)
                     .enter()
                     .append('circle')
-                    .style('fill', 'blue')
-                    .style('stroke', 'blue')
-                    .style('r', 10)
                     .attr('class', 'enemies')
-                    .attr('cx', function () {return Math.random () * 699})
-                    .attr('cy', function () {return Math.random () * 699});
 
+                    //.style('fill', 'blue')
+                    //.style('stroke', 'blue')
+                    //.style('fill-opacity',0.5)
+                    .style('r', 10)
+                    .attr('cx', function () {return Math.random () * 699})
+                    .attr('cy', function () {return Math.random () * 699})
+                    //.style('fill', "url('asteroid.png')");
+                    .attr("xlink:href", "asteroid.png")
+                    // .append('image')
+                    // .attr("xlink:href", "asteroid.png")
+                    // .attr('width', 4)
+                    // .attr('height', 4);
 
 var drag = d3.behavior.drag()
    .on("drag", function() {
@@ -96,52 +102,64 @@ var player = gameBoard.append('circle')
                     .attr('cy', playerInstance.y)
                     .call(drag);
 
-var cb = function () {
-  gameBoard.selectAll(".enemies").transition()
+var prevCollision = false;
+
+function collisionCheck () {
+
+  var anyCollision= false;
+
+  for(var i = 0 ; i < allEnemies.length; i++) {
+      var dx= allEnemies[i].x + 10 - playerInstance.x;
+      var dy= allEnemies[i].y + 10 - playerInstance.y;
+      if (Math.sqrt(dx* dx + dy * dy) < (10 * 2)) {
+          anyCollision= true;
+      }
+  }
+
+
+  if(anyCollision) {
+    if (board.currentScore > board.maxScore) {
+        board.maxScore = board.currentScore;
+        d3.selectAll('.high span').text( board.maxScore);
+    }
+    board.currentScore = 0;
+    if(prevCollision !== anyCollision) {
+      board.numCollisions++;
+    }
+
+    d3.selectAll('.collisions span').text( board.numCollisions);
+  }
+
+  prevCollision = anyCollision;
+}
+
+var move = function (element) {
+  element.transition()
+     .duration (1500)
      .attr('cx', function (d, i) {
          var enemy = allEnemies[i];
-         enemy.x= Math.floor(Math.random () * 699);
+         enemy.x = Math.floor(Math.random () * 699);
          return enemy.x;
      })
      .attr('cy', function (d,i) {
-        var enemy= allEnemies[i];
-        enemy.y= Math.floor(Math.random () * 699);
+        var enemy = allEnemies[i];
+        enemy.y = Math.floor(Math.random () * 699);
         return enemy.y;
+     })
+     .each('end', function (){
+      console.log(this);
+      move(d3.select(this));
      });
 
-    board.currentScore += 20;
-
-    d3.selectAll('.current span')
-      .text( board.currentScore);
-
-    // span = document.getElementById("myspan");
-    // txt = document.createTextNode("your cool text");
-    // span.innerText = txt.textContent;
-
-    collisionCheck();
 
  };
 
-setInterval (cb, 1000);
+setInterval(function () {
+  board.currentScore++;
+  d3.selectAll('.current span').text( board.currentScore);
+}, 100);
 
-function collisionCheck () {
-    for(var i=0 ; i< allEnemies.length; i++) {
-      console.log('enemies x', allEnemies[i].x);
-      console.log('player x',  playerInstance.x);
-      if (allEnemies[i].x === playerInstance.x && allEnemies[i].y === playerInstance.y) {
-        console.log('has a collision');
-        if (board.currentScore > board.maxScore) {
-            board.maxScore = board.currentScore;
-        }
-        board.currentScore = 0;
-        board.numCollisions++;
-      }
-    }
-    console.log(board.maxScore);
-    console.log(board.currentScore);
-    console.log(board.numCollisions);
-}
+move(eCircles);
 
-
-
+d3.timer(collisionCheck);
 
